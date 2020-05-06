@@ -6,6 +6,13 @@
         </div>
         <hr>
 
+        <div v-if="errors.length">
+            <b>Please correct the following error(s):</b>
+            <ul v-for="error in errors" v-bind:key="error">    
+                <li class="text-danger">{{ error }}</li>
+            </ul>
+        </div>
+
         <div>
             <b-container fluid>
 
@@ -21,14 +28,14 @@
                             <div class="field">
 
                                 <label for="" class="label">First Number</label>
-                                <b-form-input name="num1" v-model="num1" v-validate="'required|digits'" class="input" type="text"></b-form-input>
+                                <b-form-input name="num1" v-model="num1" class="input" type="text" required></b-form-input>
 
                             </div>
 
                             <div class="field"  style="margin-top:13px;">
 
                                 <label for="" class="label">Second Number</label>
-                                <b-form-input name="num2" v-model="num2" v-validate="'required|digits'" class="input" type="text"></b-form-input>
+                                <b-form-input name="num2" v-model="num2" class="input" type="text" required></b-form-input>
 
                             </div>
 
@@ -62,12 +69,6 @@
 
 <script>
 import axios from 'axios';
-import Vue from 'vue';
-import * as VeeValidate from 'vee-validate'
-
-/* eslint-disable */
-Vue.use(VeeValidate)
-
 
 export default {
     name: 'Calculator',
@@ -79,44 +80,78 @@ export default {
             sub: "",
             div: "",
             num1: "",
-            num2: ""
+            num2: "",
+            errors:[]
         }
     },
 
     methods: {
-        postReq: function(){
-            var data = {
-                "num1": parseFloat(this.num1),
-                "num2": parseFloat(this.num2),
-            }
-
-            /*eslint-disable*/
-            console.log(data) 
-            /*eslint-enable*/
-
-            axios({
-                method: "POST",
-                url: "http://127.0.0.1:8090/calc",
-                data: data,
-                headers: {
-                    "content-type": "text/plain"
+        validate: function(){
+            if (this.num1 && this.num2)
+            {
+                let regex=/\b^[0-9]+(.[0-9]+)?$\b/;
+                let pat = new RegExp(regex);
+                if(pat.exec(this.num1) && pat.exec(this.num2)){
+                    if(this.num2 != "0") return true
                 }
-            }).then(result => {
-                this.add = result.data['add'];
-                this.mul = result.data['mul'];
-                this.sub = result.data['sub'];
-                this.div = result.data['div'];
+            }
+            return false;
+        },
+        getErrors(){
+            let regex=/\b^[0-9]+(.[0-9]+)?$\b/;
+            let pat = new RegExp(regex);
+            let errors = []
+            if(!this.num1)
+            {
+                errors.push("Enter number 1");
+            }
+            if(!this.num2){
+                errors.push("Enter number 2");
+            }
+            if(!pat.exec(this.num1)){
+                errors.push("number 1 must be digits");
+            }
+            if(!pat.exec(this.num2)){
+                errors.push("number 2 must be digits");
+            }
+            if(this.num2 == "0"){
+                errors.push("number 2 cant't be zero");
+            }
+            return errors
+        },
 
-                /*eslint-disable*/
-                console.log(result.data) ;
-                /*eslint-enable*/
+        requestSent:function(data){
+            axios({
+                    method: "POST",
+                    url: "http://127.0.0.1:8090/calc",
+                    data: data,
+                    headers: {
+                        "content-type": "text/plain"
+                    }
+                }).then(result => {
+                    this.add = result.data['add'];
+                    this.mul = result.data['mul'];
+                    this.sub = result.data['sub'];
+                    this.div = result.data['div'];
 
-            }).catch(error => {
-                /*eslint-disable*/
-                console.error(error);
-                /*eslint-enable*/
-            });
+                }).catch(error => {
+                    /*eslint-disable*/
+                    console.error(error);
+                    /*eslint-enable*/
+                });
+        },
 
+        postReq: function(){
+            if (this.validate()) {
+                this.errors=[];
+                var data = {
+                    "num1": parseFloat(this.num1),
+                    "num2": parseFloat(this.num2),
+                }
+                this.requestSent(data);
+            } else {
+                this.errors = this.getErrors();
+            }
         }
     }
 }
